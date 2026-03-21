@@ -1,0 +1,34 @@
+[project]
+name = "familyphotos-ai"
+version = "0.1.0"
+description = "Face detection and analysis for family photos using DeepFace and PyTorch."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+authors = [
+  { name = "adhvik" },
+]
+
+dependencies = [
+  # Core numeric stack
+  # Use NumPy 2.x to satisfy opencv-python (which requires numpy>=2).
+  "numpy>=2,<3",
+
+  # PyTorch (CPU or CUDA, depending on how you install wheels)
+  # For CUDA-enabled installs on Windows / Python 3.14 you will typically
+  # use the PyTorch index-url, but we still pin the version here.
+  "torch==2.9.1",
+
+  # OpenCV for image loading / preprocessing
+  "opencv-python==4.13.0.92",
+
+  # High-level face detection + embeddings API
+  "deepface>=0.0.93",
+
+  "tf-keras",
+
+  # YAML config for enrollment
+  "pyyaml>=6.0.2",
+
+]
+
+

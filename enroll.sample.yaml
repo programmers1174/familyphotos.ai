@@ -1,0 +1,14 @@
+model:
+  model_name: Facenet512
+  detector_backend: retinaface
+  distance_metric: cosine # cosine | euclidean | euclidean_l2
+
+# Aim for high recall (lenient). Increase threshold if missing matches.
+matching:
+  threshold: 0.55
+
+# Map of person name -> list of enrollment image full paths.
+# Each enrollment image should contain exactly one face.
+people:
+  Adhvik:
+    - "C:/Users/adhvi/OneDrive/Documents/coding-projects/data_images/train.csv/2017-04-09_10-48-40_552 - Copy.jpeg"

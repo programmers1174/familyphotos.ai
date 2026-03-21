@@ -1,0 +1,10 @@
+Objective: we are building a personal project for semantic search for the family photos.
+
+Stage 1: identify the people in the pictures. 
+
+* We will use DeepFace library for (a) detecting the faces, and (b) finding the embedding
+* We will provided a dict of family member name and a list of few pictures. you should this
+  to calculate the embedding for that family member. So that when you find the embeddings
+ in the other pictures, you can compare against these to see if the family members are there
+ or not
+* You should out a dict of image name and the list of family members in that image
