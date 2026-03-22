@@ -35,3 +35,6 @@ Thumbs.db
 out.json
 enroll.yaml
 
+# Desktop UI (Node)
+desktop/electron/node_modules/
+

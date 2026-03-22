@@ -31,3 +31,31 @@ uv run python -m familyphotos_ai.cli scan --refs-json artifacts/references.json 
 Notes:
 - Output keys are **full paths**.
 - Default matching is **lenient (high recall)**; tune via YAML `matching.threshold` or `--threshold`.
+
+### Stage 2 (desktop app)
+
+Stack: **Electron** UI + **FastAPI** / **uvicorn** backend. Photo index is **`desktop/photos_db.json`** (see `desktop/photos_db.sample.json`). Image files live under the folder set by `photosRoot` in that JSON (paths are relative to the JSON file unless `photosRoot` is absolute).
+
+1) Install Python deps from the repo root:
+
+```bash
+uv sync
+```
+
+2) Edit `desktop/photos_db.json`: set `photosRoot` if needed and add objects `{ "id": "unique-id", "relativePath": "file.jpg" }` for each image.
+
+3) Run the API alone (optional):
+
+```bash
+uv run python desktop/backend/main.py
+```
+
+4) Run the desktop shell (from repo root, after installing Node dependencies once):
+
+```bash
+cd desktop/electron
+npm install
+npm start
+```
+
+Electron starts the backend automatically. The main window has a search bar (search behavior is still “list everything” for now), a grid of thumbnails, and **Esc** closes the full-size overlay.

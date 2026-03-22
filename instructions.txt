@@ -8,3 +8,15 @@ Stage 1: identify the people in the pictures.
  in the other pictures, you can compare against these to see if the family members are there
  or not
 * You should out a dict of image name and the list of family members in that image
+
+Stage 2: Building the app
+
+* We will local desktop app
+* we will use Electron for frontend and python FastAPI and uvicorn for backend
+* In the main window, there is a search bar
+* Below the search bar we will show the pictures 
+* The pictures will be in icon size
+* When you click of picture, the full size will be shown. You can press Esc key to stop showing the full picture,
+   and go back the search view
+* The "database" will be a json file for now (later on we can sqllite or something)
+* The search will be simple right now. It will show all the pictures. (later on we will add actual search)

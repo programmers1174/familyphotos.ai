@@ -1,0 +1,9 @@
+{
+  "photosRoot": "sample_photos",
+  "photos": [
+    {
+      "id": "example-1",
+      "relativePath": "your-image.jpg"
+    }
+  ]
+}

@@ -29,6 +29,10 @@ dependencies = [
   # YAML config for enrollment
   "pyyaml>=6.0.2",
 
+  # Stage 2 desktop UI (FastAPI + uvicorn)
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.32.0",
+
 ]
 
 
