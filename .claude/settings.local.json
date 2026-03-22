@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:/Users/adhvi/OneDrive/Documents/coding-projects/familyphotos.ai/desktop/electron/setup-shortcuts.ps1\")"
+    ]
+  }
+}
