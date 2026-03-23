@@ -12,27 +12,24 @@ dependencies = [
   # Core numeric stack
   # Use NumPy 2.x to satisfy opencv-python (which requires numpy>=2).
   "numpy>=2,<3",
-
   # PyTorch (CPU or CUDA, depending on how you install wheels)
   # For CUDA-enabled installs on Windows / Python 3.14 you will typically
   # use the PyTorch index-url, but we still pin the version here.
   "torch==2.9.1",
-
   # OpenCV for image loading / preprocessing
   "opencv-python==4.13.0.92",
-
   # High-level face detection + embeddings API
   "deepface>=0.0.93",
-
   "tf-keras",
-
   # YAML config for enrollment
   "pyyaml>=6.0.2",
-
   # Stage 2 desktop UI (FastAPI + uvicorn)
   "fastapi>=0.115.0",
   "uvicorn[standard]>=0.32.0",
-
+  # Stage 3 semantic search
+  "transformers>=4.40",
+  "faiss-cpu>=1.7.4",
+  "accelerate>=0.26",
 ]
 
 

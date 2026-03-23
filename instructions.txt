@@ -20,3 +20,24 @@ Stage 2: Building the app
    and go back the search view
 * The "database" will be a json file for now (later on we can sqllite or something)
 * The search will be simple right now. It will show all the pictures. (later on we will add actual search)
+
+
+Stage 3: Semantic search
+
+We will use CLIP or siglip AI model along with FAISS or Qdrant for semantic search.
+
+
+* We want to be able to do smart searches such as "pictures with kids playing in snow" 
+* We need to "index" the pictures to generate the embedding (embedding tells what is there in the picture)
+* we use AI model to generate the emebdding. Popular ones are CLIP and siglip
+* We have RTX 5060 GPU with 8GB VRAM, so we want a good model that we can run on GPU
+* Since this is learning project, we should test different models. 
+* So this app can use different kinds of models
+* Lets create a menuItem in the app called "Index" and it will show the different models available for generating embedding
+* The app will index all the images from the database that have not been indexed already
+* When we search, we can also select which model to use
+* We will deploy the model using pytorch, unless there is something better
+* When we make the search query, the query goes to the text embedding that generates the embedding for the query
+* Then a different kind of database (called vector database) will find those images that have their emebeddings close to the embedding of the query
+* We will use FAISS vector database for now, later on we will use qdarnt vector database
+ 

@@ -7,26 +7,65 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- ── Toolbar ──────────────────────────────────────────────── -->
     <header class="toolbar">
-      <label class="search-wrap">
-        <span class="search-label">Search</span>
-        <input
-          id="search"
-          type="search"
-          placeholder="Search (coming soon — shows all photos for now)"
-          autocomplete="off"
-        />
-      </label>
+      <div class="toolbar-row">
+        <label class="search-wrap">
+          <span class="search-label">Search</span>
+          <input
+            id="search"
+            type="search"
+            placeholder="e.g. kids playing in snow…"
+            autocomplete="off"
+          />
+        </label>
+
+        <div class="model-wrap">
+          <span class="search-label">Model</span>
+          <select id="model-select" title="Select embedding model for semantic search">
+            <option value="">— show all —</option>
+          </select>
+        </div>
+
+        <button id="btn-index" type="button" class="btn-index" title="Manage semantic search index">
+          Index
+        </button>
+      </div>
     </header>
+
+    <!-- ── Main grid ────────────────────────────────────────────── -->
     <main class="main">
       <p id="status" class="status" aria-live="polite">Loading…</p>
       <div id="grid" class="grid" hidden></div>
     </main>
+
+    <!-- ── Lightbox ─────────────────────────────────────────────── -->
     <div id="lightbox" class="lightbox" hidden role="dialog" aria-modal="true" aria-label="Full size photo">
       <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Close">×</button>
       <img id="lightbox-img" class="lightbox-img" alt="" />
       <p class="lightbox-hint">Press <kbd>Esc</kbd> to close</p>
     </div>
+
+    <!-- ── Index Modal ──────────────────────────────────────────── -->
+    <div id="index-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Semantic Search Index">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <h2 class="modal-title">Semantic Search Index</h2>
+          <button type="button" id="modal-close" class="lightbox-close" aria-label="Close">×</button>
+        </div>
+
+        <p id="device-label" class="modal-device"></p>
+
+        <p class="modal-hint">
+          Index your photos with an AI model to enable smart search queries like
+          <em>"birthday cake"</em> or <em>"kids at the beach"</em>.
+          The model runs locally on your GPU. First run will download the model weights.
+        </p>
+
+        <div id="model-cards" class="model-cards"></div>
+      </div>
+    </div>
+
     <script src="renderer.js"></script>
   </body>
 </html>

@@ -6,7 +6,8 @@
       "Bash(curl -s http://127.0.0.1:8765/api/photos)",
       "Bash(python -m json.tool)",
       "Bash(netstat -ano)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(uv add:*)"
     ]
   }
 }
