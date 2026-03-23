@@ -45,12 +45,16 @@ def _load_db(db_path: Path) -> tuple[Path, list[dict]]:
 
 
 def _safe_file(photos_root: Path, relative_path: str) -> Path:
-    root = photos_root.resolve()
-    candidate = (root / relative_path).resolve()
-    try:
-        candidate.relative_to(root)
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Invalid path") from None
+    p = Path(relative_path.replace("\\", "/"))
+    if p.is_absolute():
+        candidate = p.resolve()
+    else:
+        root = photos_root.resolve()
+        candidate = (root / relative_path).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            raise HTTPException(status_code=403, detail="Invalid path") from None
     if not candidate.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     return candidate

@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(powershell -ExecutionPolicy Bypass -File \"C:/Users/adhvi/OneDrive/Documents/coding-projects/familyphotos.ai/desktop/electron/setup-shortcuts.ps1\")"
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:/Users/adhvi/OneDrive/Documents/coding-projects/familyphotos.ai/desktop/electron/setup-shortcuts.ps1\")",
+      "Bash(uv run:*)",
+      "Bash(curl -s http://127.0.0.1:8765/api/photos)",
+      "Bash(python -m json.tool)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill:*)"
     ]
   }
 }

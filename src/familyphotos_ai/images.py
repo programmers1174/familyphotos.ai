@@ -27,3 +27,7 @@ def iter_image_files(root: str) -> list[str]:
     results.sort()
     return results
 
+def extract_faces(image_path: str) -> list[Face]:
+    image = cv2.imread(image_path)
+    faces = deepface.extract_faces(image)
+    return faces

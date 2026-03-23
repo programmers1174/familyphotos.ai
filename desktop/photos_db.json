@@ -1,4 +1,14 @@
 {
   "photosRoot": "sample_photos",
-  "photos": []
+  "photos": [
+    {"id": "photo-1", "relativePath": "C:\\Users\\adhvi\\OneDrive\\Documents\\coding-projects\\data_images\\train.csv\\2015-12-28_00-38-03_000.jpeg"},
+    {"id": "photo-2", "relativePath": "C:\\Users\\adhvi\\OneDrive\\Documents\\coding-projects\\data_images\\train.csv\\2016-11-01_18-18-25_000.jpeg"},
+    {"id": "photo-3", "relativePath": "C:\\Users\\adhvi\\OneDrive\\Documents\\coding-projects\\data_images\\train.csv\\2016-11-12_09-24-49_170.jpeg"},
+    {"id": "photo-4", "relativePath": "C:\\Users\\adhvi\\OneDrive\\Documents\\coding-projects\\data_images\\train.csv\\2016-11-26_14-07-23_139.jpeg"},
+    {"id": "photo-5", "relativePath": "C:\\Users\\adhvi\\OneDrive\\Documents\\coding-projects\\data_images\\train.csv\\2016-12-27_12-13-23_046.jpeg"},
+    {"id": "photo-6", "relativePath": "C:\\Users\\adhvi\\OneDrive\\Documents\\coding-projects\\data_images\\train.csv\\2017-04-09_10-48-40_552 - Copy.jpeg"},
+    {"id": "photo-7", "relativePath": "C:\\Users\\adhvi\\OneDrive\\Documents\\coding-projects\\data_images\\train.csv\\2017-04-09_10-48-40_552.jpeg"},
+    {"id": "photo-8", "relativePath": "C:\\Users\\adhvi\\OneDrive\\Documents\\coding-projects\\data_images\\train.csv\\2017-04-15_19-39-25_000 - Copy.jpeg"},
+    {"id": "photo-9", "relativePath": "C:\\Users\\adhvi\\OneDrive\\Documents\\coding-projects\\data_images\\train.csv\\2017-04-15_19-39-25_000.jpeg"}
+  ]
 }
