@@ -153,6 +153,50 @@ body {
   display: block;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.page-info {
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+  min-width: 12em;
+}
+
+.page-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(108, 158, 248, 0.08);
+}
+
+.page-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ── Lightbox ────────────────────────────────────────────────── */
 
 .lightbox {

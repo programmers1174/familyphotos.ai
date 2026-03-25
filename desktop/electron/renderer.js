@@ -14,9 +14,22 @@ const indexModal    = document.getElementById("index-modal");
 const modalClose    = document.getElementById("modal-close");
 const deviceLabel   = document.getElementById("device-label");
 const modelCards    = document.getElementById("model-cards");
+const paginationEl  = document.getElementById("pagination");
+const pagePrev      = document.getElementById("page-prev");
+const pageNext      = document.getElementById("page-next");
+const pageInfo      = document.getElementById("page-info");
+
+/** Thumbnails per page (homepage grid). */
+const PAGE_SIZE = 48;
 
 /** @type {{ id: string, relativePath: string, url: string }[]} */
 let allPhotos = [];
+
+/** 1-based current page */
+let currentPage = 1;
+
+/** Last API response used for empty-state copy */
+let lastSemantic = false;
 
 /** Polling handle for the index modal */
 let _pollInterval = null;
@@ -42,18 +55,41 @@ async function loadPhotos() {
   return { photos: data.photos || [], semantic: data.semantic || false };
 }
 
-function renderGrid(photos, semantic = false) {
+function totalPages() {
+  return Math.max(1, Math.ceil(allPhotos.length / PAGE_SIZE));
+}
+
+function clampCurrentPage() {
+  const tp = totalPages();
+  if (currentPage > tp) currentPage = tp;
+  if (currentPage < 1) currentPage = 1;
+}
+
+/** Render the current page of `allPhotos` and update pagination controls. */
+function renderView() {
+  clampCurrentPage();
   gridEl.replaceChildren();
-  if (photos.length === 0) {
-    setStatus(semantic ? "No matching photos found." : "No photos in the database.");
+
+  if (allPhotos.length === 0) {
+    const msg = lastSemantic
+      ? "No matching photos found."
+      : "No photos in the database. Add entries to desktop/photos_db.json.";
+    setStatus(msg);
     statusEl.hidden = false;
     gridEl.hidden = true;
+    paginationEl.hidden = true;
     return;
   }
+
   statusEl.hidden = true;
   gridEl.hidden = false;
+  paginationEl.hidden = false;
 
-  for (const p of photos) {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const end = Math.min(start + PAGE_SIZE, allPhotos.length);
+  const slice = allPhotos.slice(start, end);
+
+  for (const p of slice) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "thumb";
@@ -66,15 +102,23 @@ function renderGrid(photos, semantic = false) {
     btn.addEventListener("click", () => openLightbox(p));
     gridEl.appendChild(btn);
   }
+
+  const tp = totalPages();
+  pageInfo.textContent = `Page ${currentPage} of ${tp} · ${start + 1}–${end} of ${allPhotos.length}`;
+  pagePrev.disabled = currentPage <= 1;
+  pageNext.disabled = currentPage >= tp;
 }
 
 async function refreshPhotos() {
   try {
     const { photos, semantic } = await loadPhotos();
     allPhotos = photos;
-    renderGrid(allPhotos, semantic);
+    lastSemantic = semantic;
+    currentPage = 1;
+    renderView();
   } catch (err) {
     setStatus(String(err.message || err), true);
+    paginationEl.hidden = true;
   }
 }
 
@@ -121,6 +165,20 @@ function populateModelSelector(models) {
 
 modelSelect.addEventListener("change", refreshPhotos);
 searchInput.addEventListener("input",  refreshPhotos);
+
+pagePrev.addEventListener("click", () => {
+  if (currentPage <= 1) return;
+  currentPage -= 1;
+  renderView();
+  gridEl.scrollIntoView({ block: "start", behavior: "smooth" });
+});
+
+pageNext.addEventListener("click", () => {
+  if (currentPage >= totalPages()) return;
+  currentPage += 1;
+  renderView();
+  gridEl.scrollIntoView({ block: "start", behavior: "smooth" });
+});
 
 // ── Index Modal ───────────────────────────────────────────────────────────
 
@@ -250,18 +308,14 @@ indexModal.addEventListener("click", (e) => { if (e.target === indexModal) close
   } catch { /* non-fatal */ }
 
   try {
-    const { photos } = await loadPhotos();
+    const { photos, semantic } = await loadPhotos();
     allPhotos = photos;
-    if (allPhotos.length === 0) {
-      setStatus("No photos in the database. Add entries to desktop/photos_db.json.");
-      gridEl.hidden = true;
-    } else {
-      statusEl.hidden = true;
-      gridEl.hidden = false;
-      renderGrid(allPhotos);
-    }
+    lastSemantic = semantic;
+    currentPage = 1;
+    renderView();
   } catch (err) {
     setStatus(`Could not load photos: ${err.message || err}`, true);
     gridEl.hidden = true;
+    paginationEl.hidden = true;
   }
 })();
