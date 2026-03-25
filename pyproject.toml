@@ -26,6 +26,9 @@ dependencies = [
   # Stage 2 desktop UI (FastAPI + uvicorn)
   "fastapi>=0.115.0",
   "uvicorn[standard]>=0.32.0",
+  # HEIC decode (desktop thumbnails + CLIP indexing); Electron cannot render raw HEIC
+  "pillow>=10.4.0",
+  "pillow-heif>=0.16.0",
   # Stage 3 semantic search
   "transformers>=4.40",
   "faiss-cpu>=1.7.4",

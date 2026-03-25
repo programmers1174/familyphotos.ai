@@ -4,7 +4,17 @@ import os
 from pathlib import Path
 
 
-_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
+_IMAGE_EXTS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".bmp",
+    ".tif",
+    ".tiff",
+    ".heic",
+    ".heif",
+}
 
 
 def iter_image_files(root: str) -> list[str]:

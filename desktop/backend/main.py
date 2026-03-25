@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import json
 import os
+from io import BytesIO
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 import uvicorn
 
@@ -70,6 +71,19 @@ def _safe_file(photos_root: Path, relative_path: str) -> Path:
     if not candidate.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     return candidate
+
+
+_HEIC_SUFFIXES = {".heic", ".heif"}
+
+
+def _heic_as_jpeg_response(path: Path) -> Response:
+    """Chromium/Electron cannot display HEIC in <img>; serve JPEG bytes instead."""
+    from PIL import Image
+
+    buf = BytesIO()
+    with Image.open(path) as im:
+        im.convert("RGB").save(buf, format="JPEG", quality=92, optimize=True)
+    return Response(content=buf.getvalue(), media_type="image/jpeg")
 
 
 # ---------------------------------------------------------------------------
@@ -215,6 +229,14 @@ def photo_file(photo_id: str) -> FileResponse:
         raise HTTPException(status_code=404, detail="Unknown photo id")
     rel = str(rel).replace("\\", "/")
     path = _safe_file(photos_root, rel)
+    if path.suffix.lower() in _HEIC_SUFFIXES:
+        try:
+            return _heic_as_jpeg_response(path)
+        except Exception as e:  # pragma: no cover - decode / missing codec
+            raise HTTPException(
+                status_code=500,
+                detail=f"Could not decode HEIC image (install pillow-heif): {e}",
+            ) from e
     return FileResponse(path)
 
 
