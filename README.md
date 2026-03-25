@@ -59,3 +59,20 @@ npm start
 ```
 
 Electron starts the backend automatically. The main window has a search bar (search behavior is still “list everything” for now), a grid of thumbnails, and **Esc** closes the full-size overlay.
+
+### Stage 3 (semantic search — CUDA required)
+
+CLIP / SigLIP embedding and FAISS indexing **run on NVIDIA GPU only**. Install a **CUDA-enabled** PyTorch build for your driver ([PyTorch get started](https://pytorch.org/get-started/locally/)). If `torch.cuda.is_available()` is false, the desktop **backend exits on startup** and the indexer CLI exits with code 1 — there is no CPU fallback.
+
+**Index photos from the command line** (same `photos_db.json` and `desktop/backend/indexes/` store as the app):
+
+```bash
+uv run familyphotos-index-semantic --model clip-vit-base-patch32
+```
+
+Other models: `clip-vit-large-patch14`, `siglip-base-patch16-224`, `siglip-so400m-patch14-384`.
+
+Optional flags:
+
+- `--db` — path to `photos_db.json` (default: `desktop/photos_db.json`)
+- `--index-dir` — FAISS output directory (default: `desktop/backend/indexes`)

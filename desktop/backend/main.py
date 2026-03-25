@@ -20,6 +20,8 @@ import uvicorn
 
 import semantic_search as ss
 
+ss.init_inference_device()
+
 DEFAULT_PORT = int(os.environ.get("FAMILYPHOTOS_PORT", "8765"))
 
 # FAISS indexes live next to main.py (desktop/backend/indexes/)

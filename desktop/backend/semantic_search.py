@@ -5,14 +5,16 @@ Architecture
 ------------
 * MODELS registry  — describes every supported embedding model.
 * FaissStore       — wraps a FAISS IndexFlatIP with a photo-id mapping; saved to disk.
-* embed_image / embed_text — run a model on GPU (or CPU) and return an L2-normalised
+* embed_image / embed_text — run a model on CUDA only and return an L2-normalised
   numpy vector.
 * IndexingManager  — background-threads indexing; exposes status and search.
 """
 from __future__ import annotations
 
 import json
+import sys
 import threading
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -71,7 +73,24 @@ MODELS: dict[str, dict[str, Any]] = {
 
 
 def _device() -> torch.device:
-    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    """CUDA device 0 only; semantic models do not run on CPU."""
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            "CUDA is required for semantic embedding models but torch.cuda.is_available() "
+            "is False. Install a PyTorch build with CUDA for your NVIDIA driver (see pytorch.org)."
+        )
+    return torch.device("cuda:0")
+
+
+def init_inference_device() -> None:
+    """Create the CUDA context on the calling thread (call once at process startup). Exits if no GPU."""
+    try:
+        device = _device()
+    except RuntimeError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from None
+    torch.zeros(1, device=device)
+    torch.cuda.synchronize()
 
 
 def device_label() -> str:
@@ -218,6 +237,62 @@ def embed_text(model_info: dict[str, Any], text: str) -> np.ndarray:
     return feats.cpu().float().numpy()[0]
 
 
+def _index_pending_into_store(
+    model_info: dict[str, Any],
+    store: FaissStore,
+    pending: list[dict],
+    photos_root: Path,
+    *,
+    checkpoint_every: int = 20,
+    after_each: Callable[[], None] | None = None,
+) -> None:
+    for i, photo in enumerate(pending):
+        rel = str(photo.get("relativePath") or photo.get("file") or "")
+        rel_p = Path(rel.replace("\\", "/"))
+        img_path = rel_p if rel_p.is_absolute() else photos_root / rel_p
+        if not img_path.is_file():
+            if after_each:
+                after_each()
+            continue
+        try:
+            emb = embed_image(model_info, img_path)
+            store.add(str(photo["id"]), emb)
+        except Exception as exc:
+            print(f"[semantic_search] embed failed for {img_path}: {exc}")
+        if after_each:
+            after_each()
+        if (i + 1) % checkpoint_every == 0:
+            store.save()
+    store.save()
+
+
+def run_semantic_index_sync(
+    model_id: str,
+    photos: list[dict],
+    photos_root: Path,
+    index_dir: Path,
+    *,
+    checkpoint_every: int = 20,
+) -> int:
+    """Index photos not yet in the FAISS store. Requires CUDA. Returns how many were pending."""
+    if model_id not in MODELS:
+        raise ValueError(f"Unknown model_id: {model_id!r}")
+    model_info = MODELS[model_id]
+    store = FaissStore(index_dir, model_id, model_info["embedding_dim"])
+    already = store.indexed_ids()
+    pending = [p for p in photos if str(p.get("id", "")) not in already]
+    if not pending:
+        return 0
+    _index_pending_into_store(
+        model_info,
+        store,
+        pending,
+        photos_root,
+        checkpoint_every=checkpoint_every,
+    )
+    return len(pending)
+
+
 # ---------------------------------------------------------------------------
 # Indexing manager
 # ---------------------------------------------------------------------------
@@ -310,25 +385,19 @@ class IndexingManager:
             model_info = MODELS[model_id]
             _store = self._store(model_id)
             try:
-                for i, photo in enumerate(pending):
-                    rel = str(photo.get("relativePath") or photo.get("file") or "")
-                    rel_p = Path(rel.replace("\\", "/"))
-                    img_path = rel_p if rel_p.is_absolute() else photos_root / rel_p
-                    if not img_path.is_file():
-                        with self._lock:
-                            self._statuses[model_id].done += 1
-                        continue
-                    try:
-                        emb = embed_image(model_info, img_path)
-                        _store.add(str(photo["id"]), emb)
-                    except Exception as exc:
-                        print(f"[semantic_search] embed failed for {img_path}: {exc}")
+
+                def _tick() -> None:
                     with self._lock:
                         self._statuses[model_id].done += 1
-                    # Checkpoint every 20 images
-                    if (i + 1) % 20 == 0:
-                        _store.save()
-                _store.save()
+
+                _index_pending_into_store(
+                    model_info,
+                    _store,
+                    pending,
+                    photos_root,
+                    checkpoint_every=20,
+                    after_each=_tick,
+                )
             except Exception as exc:
                 with self._lock:
                     self._statuses[model_id].error = str(exc)

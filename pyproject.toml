@@ -35,4 +35,11 @@ dependencies = [
   "accelerate>=0.26",
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+familyphotos-index-semantic = "familyphotos_ai.cli_index_semantic:main"
+
 
