@@ -249,8 +249,11 @@ def _index_pending_into_store(
     *,
     checkpoint_every: int = 20,
     after_each: Callable[[], None] | None = None,
+    show_progress: bool = False,
 ) -> None:
-    for i, photo in enumerate(pending):
+    from tqdm import tqdm
+    iterator = tqdm(pending, unit="img", dynamic_ncols=True) if show_progress else pending
+    for i, photo in enumerate(iterator):
         rel = str(photo.get("relativePath") or photo.get("file") or "")
         rel_p = Path(rel.replace("\\", "/"))
         img_path = rel_p if rel_p.is_absolute() else photos_root / rel_p
@@ -293,6 +296,7 @@ def run_semantic_index_sync(
         pending,
         photos_root,
         checkpoint_every=checkpoint_every,
+        show_progress=True,
     )
     return len(pending)
 
