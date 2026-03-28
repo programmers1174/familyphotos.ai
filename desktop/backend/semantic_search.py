@@ -72,28 +72,58 @@ MODELS: dict[str, dict[str, Any]] = {
 }
 
 
+_force_cpu: bool = False
+_batch_size: int = 128
+_use_fp16: bool = True
+_use_compile: bool = True
+
+
+def set_force_cpu(enabled: bool = True) -> None:
+    global _force_cpu
+    _force_cpu = enabled
+
+
+def set_inference_options(
+    batch_size: int | None = None,
+    fp16: bool | None = None,
+    compile: bool | None = None,
+) -> None:
+    global _batch_size, _use_fp16, _use_compile
+    if batch_size is not None:
+        _batch_size = batch_size
+    if fp16 is not None:
+        _use_fp16 = fp16
+    if compile is not None:
+        _use_compile = compile
+
+
 def _device() -> torch.device:
-    """CUDA device 0 only; semantic models do not run on CPU."""
+    if _force_cpu:
+        return torch.device("cpu")
     if not torch.cuda.is_available():
         raise RuntimeError(
             "CUDA is required for semantic embedding models but torch.cuda.is_available() "
-            "is False. Install a PyTorch build with CUDA for your NVIDIA driver (see pytorch.org)."
+            "is False. Install a PyTorch build with CUDA for your NVIDIA driver (see pytorch.org). "
+            "Use --cpu to run on CPU instead."
         )
     return torch.device("cuda:0")
 
 
 def init_inference_device() -> None:
-    """Create the CUDA context on the calling thread (call once at process startup). Exits if no GPU."""
+    """Warm up the inference device. Exits if no GPU and --cpu was not requested."""
     try:
         device = _device()
     except RuntimeError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from None
-    torch.zeros(1, device=device)
-    torch.cuda.synchronize()
+    if device.type == "cuda":
+        torch.zeros(1, device=device)
+        torch.cuda.synchronize()
 
 
 def device_label() -> str:
+    if _force_cpu:
+        return "CPU"
     if torch.cuda.is_available():
         return torch.cuda.get_device_name(0)
     return "CPU"
@@ -205,9 +235,19 @@ def _load_model(model_info: dict[str, Any]) -> tuple:
             model = SiglipModel.from_pretrained(hf_name).to(device)
 
         model.eval()
+        if _use_compile and device.type == "cuda":
+            print(f"[semantic_search] compiling model with torch.compile …", flush=True)
+            model = torch.compile(model)
         entry = (model, processor, device, mtype)
         _loaded_models[mid] = entry
         return entry
+
+
+def _autocast():
+    import contextlib
+    if _use_fp16 and not _force_cpu:
+        return torch.autocast("cuda")
+    return contextlib.nullcontext()
 
 
 def embed_image(model_info: dict[str, Any], image_path: Path) -> np.ndarray:
@@ -215,7 +255,7 @@ def embed_image(model_info: dict[str, Any], image_path: Path) -> np.ndarray:
     model, processor, device, _ = _load_model(model_info)
     img = Image.open(image_path).convert("RGB")
     inputs = processor(images=img, return_tensors="pt").to(device)
-    with torch.no_grad():
+    with torch.no_grad(), _autocast():
         feats = model.get_image_features(**inputs)
     if not isinstance(feats, torch.Tensor):
         feats = feats.pooler_output
@@ -234,7 +274,7 @@ def embed_text(model_info: dict[str, Any], text: str) -> np.ndarray:
         ).to(device)
     else:
         inputs = processor(text=[text], return_tensors="pt", padding=True).to(device)
-    with torch.no_grad():
+    with torch.no_grad(), _autocast():
         feats = model.get_text_features(**inputs)
     if not isinstance(feats, torch.Tensor):
         feats = feats.pooler_output
@@ -250,27 +290,98 @@ def _index_pending_into_store(
     checkpoint_every: int = 20,
     after_each: Callable[[], None] | None = None,
     show_progress: bool = False,
+    num_workers: int = 4,
 ) -> None:
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+    from PIL import Image
     from tqdm import tqdm
-    iterator = tqdm(pending, unit="img", dynamic_ncols=True) if show_progress else pending
-    for i, photo in enumerate(iterator):
+
+    model, processor, device, _ = _load_model(model_info)
+
+    def _load_one(photo: dict) -> tuple[dict, torch.Tensor | None, str | None]:
         rel = str(photo.get("relativePath") or photo.get("file") or "")
         rel_p = Path(rel.replace("\\", "/"))
         img_path = rel_p if rel_p.is_absolute() else photos_root / rel_p
         if not img_path.is_file():
-            if after_each:
-                after_each()
-            continue
+            return photo, None, None
         try:
-            emb = embed_image(model_info, img_path)
-            store.add(str(photo["id"]), emb)
+            img = Image.open(img_path).convert("RGB")
+            t = processor(images=img, return_tensors="pt")["pixel_values"][0]
+            return photo, t, None
         except Exception as exc:
-            print(f"[semantic_search] embed failed for {img_path}: {exc}")
-        if after_each:
-            after_each()
-        if (i + 1) % checkpoint_every == 0:
-            store.save()
-    store.save()
+            return photo, None, str(exc)
+
+    bar = tqdm(total=len(pending), unit="img", dynamic_ncols=True) if show_progress else None
+    total_preprocess_s = 0.0
+    total_gpu_s = 0.0
+
+    with ThreadPoolExecutor(max_workers=num_workers) as executor:
+        # Keep 2 batches of futures in flight at all times so preprocessing
+        # of batch N+1 runs while the GPU processes batch N.
+        i = 0
+        pipeline: list[list] = []
+
+        def _submit_next() -> None:
+            nonlocal i
+            if i < len(pending):
+                batch = pending[i : i + _batch_size]
+                i += _batch_size
+                pipeline.append([executor.submit(_load_one, p) for p in batch])
+
+        _submit_next()
+        _submit_next()
+
+        while pipeline:
+            t0 = time.perf_counter()
+            futures = pipeline.pop(0)
+            _submit_next()  # keep pipeline full
+
+            good: list[tuple[dict, torch.Tensor]] = []
+            failed: list[dict] = []
+            for future in futures:
+                photo, tensor, err = future.result()
+                if tensor is not None:
+                    good.append((photo, tensor))
+                else:
+                    failed.append(photo)
+                    if err:
+                        print(f"\n[semantic_search] load failed: {err}")
+            total_preprocess_s += time.perf_counter() - t0
+
+            for photo in failed:
+                if after_each:
+                    after_each()
+            if bar and failed:
+                bar.update(len(failed))
+
+            if good:
+                photos_b, tensors_b = zip(*good)
+                pixel_values = torch.stack(list(tensors_b)).pin_memory().to(device, non_blocking=True)
+                t1 = time.perf_counter()
+                try:
+                    with torch.no_grad(), _autocast():
+                        feats = model.get_image_features(pixel_values=pixel_values)
+                    if not isinstance(feats, torch.Tensor):
+                        feats = feats.pooler_output
+                    for photo, emb in zip(photos_b, feats.cpu().float().numpy()):
+                        store.add(str(photo["id"]), emb)
+                except Exception as exc:
+                    print(f"\n[semantic_search] batch forward failed: {exc}")
+                total_gpu_s += time.perf_counter() - t1
+
+                for _ in good:
+                    if after_each:
+                        after_each()
+                if bar:
+                    bar.update(len(good))
+
+                store.save()
+
+    if bar:
+        bar.close()
+    if show_progress:
+        print(f"preprocess: {total_preprocess_s:.1f}s  gpu forward: {total_gpu_s:.1f}s")
 
 
 def run_semantic_index_sync(
@@ -280,6 +391,7 @@ def run_semantic_index_sync(
     index_dir: Path,
     *,
     checkpoint_every: int = 20,
+    num_workers: int = 4,
 ) -> int:
     """Index photos not yet in the FAISS store. Requires CUDA. Returns how many were pending."""
     if model_id not in MODELS:
@@ -297,6 +409,7 @@ def run_semantic_index_sync(
         photos_root,
         checkpoint_every=checkpoint_every,
         show_progress=True,
+        num_workers=num_workers,
     )
     return len(pending)
 

@@ -68,8 +68,44 @@ def main() -> int:
         default=_backend_dir() / "indexes",
         help="Output directory for <model>.faiss and <model>_ids.json.",
     )
+    p.add_argument(
+        "--cpu",
+        action="store_true",
+        help="Run on CPU instead of GPU (for benchmarking). Without this flag the program exits if no GPU is found.",
+    )
+    p.add_argument(
+        "--batch-size",
+        type=int,
+        default=128,
+        metavar="N",
+        help="Images per GPU forward pass (default: 128).",
+    )
+    p.add_argument(
+        "--no-fp16",
+        action="store_true",
+        help="Disable fp16 autocast (runs in fp32).",
+    )
+    p.add_argument(
+        "--no-compile",
+        action="store_true",
+        help="Disable torch.compile (skips JIT compilation warm-up).",
+    )
+    p.add_argument(
+        "--num-workers",
+        type=int,
+        default=4,
+        metavar="N",
+        help="CPU threads for parallel image preprocessing (default: 4).",
+    )
     args = p.parse_args()
 
+    if args.cpu:
+        ss.set_force_cpu()
+    ss.set_inference_options(
+        batch_size=args.batch_size,
+        fp16=not args.no_fp16,
+        compile=not args.no_compile,
+    )
     ss.init_inference_device()
 
     try:
@@ -84,6 +120,7 @@ def main() -> int:
         entries,
         photos_root,
         args.index_dir.resolve(),
+        num_workers=args.num_workers,
     )
     store = ss.FaissStore(
         args.index_dir.resolve(),
