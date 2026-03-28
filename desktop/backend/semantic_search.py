@@ -217,6 +217,8 @@ def embed_image(model_info: dict[str, Any], image_path: Path) -> np.ndarray:
     inputs = processor(images=img, return_tensors="pt").to(device)
     with torch.no_grad():
         feats = model.get_image_features(**inputs)
+    if not isinstance(feats, torch.Tensor):
+        feats = feats.pooler_output
     return feats.cpu().float().numpy()[0]
 
 
@@ -234,6 +236,8 @@ def embed_text(model_info: dict[str, Any], text: str) -> np.ndarray:
         inputs = processor(text=[text], return_tensors="pt", padding=True).to(device)
     with torch.no_grad():
         feats = model.get_text_features(**inputs)
+    if not isinstance(feats, torch.Tensor):
+        feats = feats.pooler_output
     return feats.cpu().float().numpy()[0]
 
 
