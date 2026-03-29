@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from io import BytesIO
 from pathlib import Path
 
@@ -77,6 +78,34 @@ def _safe_file(photos_root: Path, relative_path: str) -> Path:
 
 _HEIC_SUFFIXES = {".heic", ".heif"}
 
+# Cached JPEG thumbs live here (see desktop/thumbnails/.gitkeep)
+_THUMB_MAX_EDGE = 320
+
+
+def _thumbnails_dir() -> Path:
+    d = _repo_root() / "desktop" / "thumbnails"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _thumb_jpeg_path(photo_id: str) -> Path:
+    """Stable filename under thumbnails/; prefix avoids Windows reserved names."""
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", photo_id).strip("._-") or "photo"
+    return _thumbnails_dir() / f"fp_{safe}.jpg"
+
+
+def _ensure_thumbnail_jpeg(source: Path, dest: Path) -> None:
+    """Resize to fit within THUMB_MAX_EDGE and write JPEG. Atomic replace."""
+    from PIL import Image
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with Image.open(source) as im:
+        rgb = im.convert("RGB")
+        rgb.thumbnail((_THUMB_MAX_EDGE, _THUMB_MAX_EDGE), Image.Resampling.LANCZOS)
+        tmp = dest.with_suffix(".jpg.tmp")
+        rgb.save(tmp, format="JPEG", quality=82, optimize=True)
+        tmp.replace(dest)
+
 
 def _heic_as_jpeg_response(path: Path) -> Response:
     """Chromium/Electron cannot display HEIC in <img>; serve JPEG bytes instead."""
@@ -111,6 +140,7 @@ class PhotoItem(BaseModel):
     id: str
     relativePath: str
     url: str
+    thumbnailUrl: str
 
 
 class PhotoListResponse(BaseModel):
@@ -196,6 +226,7 @@ def list_photos(
             id=str(pid),
             relativePath=rel,
             url=f"/api/photos/{pid}/file",
+            thumbnailUrl=f"/api/photos/{pid}/thumb",
         )
 
     # Semantic search
@@ -240,6 +271,51 @@ def photo_file(photo_id: str) -> FileResponse:
                 detail=f"Could not decode HEIC image (install pillow-heif): {e}",
             ) from e
     return FileResponse(path)
+
+
+@app.get("/api/photos/{photo_id}/thumb")
+def photo_thumb(photo_id: str) -> FileResponse:
+    """Serve a small JPEG thumbnail; generate and cache under desktop/thumbnails/."""
+    db_path = _default_db_path()
+    try:
+        photos_root, entries = _load_db(db_path)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    except (json.JSONDecodeError, ValueError) as e:
+        raise HTTPException(status_code=500, detail=f"Invalid database: {e}") from e
+
+    rel: str | None = None
+    for row in entries:
+        if isinstance(row, dict) and str(row.get("id")) == photo_id:
+            rel = row.get("relativePath") or row.get("file")
+            break
+    if not rel:
+        raise HTTPException(status_code=404, detail="Unknown photo id")
+    rel = str(rel).replace("\\", "/")
+    path = _safe_file(photos_root, rel)
+    thumb = _thumb_jpeg_path(photo_id)
+    try:
+        src_mtime = path.stat().st_mtime
+    except OSError as e:
+        raise HTTPException(status_code=404, detail="File not found") from e
+
+    need_build = True
+    if thumb.is_file():
+        try:
+            need_build = thumb.stat().st_mtime < src_mtime
+        except OSError:
+            need_build = True
+
+    if need_build:
+        try:
+            _ensure_thumbnail_jpeg(path, thumb)
+        except Exception as e:  # pragma: no cover - decode / IO
+            raise HTTPException(
+                status_code=500,
+                detail=f"Could not build thumbnail: {e}",
+            ) from e
+
+    return FileResponse(thumb, media_type="image/jpeg")
 
 
 # ---------------------------------------------------------------------------

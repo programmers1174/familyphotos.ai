@@ -38,3 +38,7 @@ enroll.yaml
 # Desktop UI (Node)
 desktop/electron/node_modules/
 
+# Generated image thumbnails (cached under desktop/thumbnails/)
+desktop/thumbnails/*
+!desktop/thumbnails/.gitkeep
+

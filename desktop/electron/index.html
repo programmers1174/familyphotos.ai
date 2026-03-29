@@ -7,35 +7,39 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <!-- ── Toolbar ──────────────────────────────────────────────── -->
-    <header class="toolbar">
-      <div class="toolbar-row">
-        <label class="search-wrap">
-          <span class="search-label">Search</span>
-          <input
-            id="search"
-            type="search"
-            placeholder="e.g. kids playing in snow…"
-            autocomplete="off"
-          />
-        </label>
-
+    <header class="top-bar">
+      <span class="logo">familyphotos.ai</span>
+      <div class="top-bar-actions">
         <div class="model-wrap">
           <span class="search-label">Model</span>
           <select id="model-select" title="Select embedding model for semantic search">
             <option value="">— show all —</option>
           </select>
         </div>
-
         <button id="btn-index" type="button" class="btn-index" title="Manage semantic search index">
           Index
         </button>
       </div>
     </header>
 
-    <!-- ── Main grid ────────────────────────────────────────────── -->
+    <section class="hero" aria-label="Search photos">
+      <div class="hero-content">
+        <p class="hero-tagline">Search your library</p>
+        <label class="hero-search-label">
+          <span class="visually-hidden">Search photos</span>
+          <input
+            id="search"
+            class="hero-search-input"
+            type="search"
+            placeholder="e.g. kids playing in snow, birthday cake, beach…"
+            autocomplete="off"
+          />
+        </label>
+      </div>
+    </section>
+
     <main class="main">
-      <p id="status" class="status" aria-live="polite">Loading…</p>
+      <p id="status" class="status" aria-live="polite" hidden></p>
       <div id="grid" class="grid" hidden></div>
       <nav id="pagination" class="pagination" aria-label="Photo pages" hidden>
         <button type="button" id="page-prev" class="page-btn">Previous</button>
@@ -44,14 +48,12 @@
       </nav>
     </main>
 
-    <!-- ── Lightbox ─────────────────────────────────────────────── -->
     <div id="lightbox" class="lightbox" hidden role="dialog" aria-modal="true" aria-label="Full size photo">
       <button type="button" id="lightbox-close" class="lightbox-close" aria-label="Close">×</button>
       <img id="lightbox-img" class="lightbox-img" alt="" />
       <p class="lightbox-hint">Press <kbd>Esc</kbd> to close</p>
     </div>
 
-    <!-- ── Index Modal ──────────────────────────────────────────── -->
     <div id="index-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Semantic Search Index">
       <div class="modal-panel">
         <div class="modal-header">

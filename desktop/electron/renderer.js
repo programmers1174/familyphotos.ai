@@ -22,7 +22,7 @@ const pageInfo      = document.getElementById("page-info");
 /** Thumbnails per page (homepage grid). */
 const PAGE_SIZE = 48;
 
-/** @type {{ id: string, relativePath: string, url: string }[]} */
+/** @type {{ id: string, relativePath: string, url: string, thumbnailUrl: string }[]} */
 let allPhotos = [];
 
 /** 1-based current page */
@@ -39,6 +39,7 @@ let _pollInterval = null;
 function setStatus(text, isError = false) {
   statusEl.textContent = text;
   statusEl.style.color = isError ? "var(--red)" : "";
+  statusEl.hidden = !text;
 }
 
 // ── Photos ────────────────────────────────────────────────────────────────
@@ -67,21 +68,31 @@ function clampCurrentPage() {
 
 /** Render the current page of `allPhotos` and update pagination controls. */
 function renderView() {
+  const q = searchInput.value.trim();
   clampCurrentPage();
   gridEl.replaceChildren();
+
+  if (!q) {
+    document.body.classList.remove("has-results");
+    setStatus("");
+    gridEl.hidden = true;
+    paginationEl.hidden = true;
+    return;
+  }
+
+  document.body.classList.add("has-results");
 
   if (allPhotos.length === 0) {
     const msg = lastSemantic
       ? "No matching photos found."
       : "No photos in the database. Add entries to desktop/photos_db.json.";
     setStatus(msg);
-    statusEl.hidden = false;
     gridEl.hidden = true;
     paginationEl.hidden = true;
     return;
   }
 
-  statusEl.hidden = true;
+  setStatus("");
   gridEl.hidden = false;
   paginationEl.hidden = false;
 
@@ -95,9 +106,11 @@ function renderView() {
     btn.className = "thumb";
     btn.setAttribute("aria-label", `Open ${p.relativePath}`);
     const img = document.createElement("img");
-    img.src = `${API_BASE}${p.url}`;
+    const thumb = p.thumbnailUrl || p.url;
+    img.src = `${API_BASE}${thumb}`;
     img.alt = p.relativePath;
     img.loading = "lazy";
+    img.decoding = "async";
     btn.appendChild(img);
     btn.addEventListener("click", () => openLightbox(p));
     gridEl.appendChild(btn);
@@ -110,6 +123,15 @@ function renderView() {
 }
 
 async function refreshPhotos() {
+  const q = searchInput.value.trim();
+  if (!q) {
+    allPhotos = [];
+    lastSemantic = false;
+    currentPage = 1;
+    renderView();
+    return;
+  }
+
   try {
     const { photos, semantic } = await loadPhotos();
     allPhotos = photos;
@@ -117,8 +139,11 @@ async function refreshPhotos() {
     currentPage = 1;
     renderView();
   } catch (err) {
+    allPhotos = [];
     setStatus(String(err.message || err), true);
+    gridEl.hidden = true;
     paginationEl.hidden = true;
+    gridEl.replaceChildren();
   }
 }
 
@@ -170,14 +195,14 @@ pagePrev.addEventListener("click", () => {
   if (currentPage <= 1) return;
   currentPage -= 1;
   renderView();
-  gridEl.scrollIntoView({ block: "start", behavior: "smooth" });
+  if (!gridEl.hidden) gridEl.scrollIntoView({ block: "start", behavior: "smooth" });
 });
 
 pageNext.addEventListener("click", () => {
   if (currentPage >= totalPages()) return;
   currentPage += 1;
   renderView();
-  gridEl.scrollIntoView({ block: "start", behavior: "smooth" });
+  if (!gridEl.hidden) gridEl.scrollIntoView({ block: "start", behavior: "smooth" });
 });
 
 // ── Index Modal ───────────────────────────────────────────────────────────
@@ -301,21 +326,11 @@ indexModal.addEventListener("click", (e) => { if (e.target === indexModal) close
 // ── Bootstrap ─────────────────────────────────────────────────────────────
 
 (async () => {
-  // Load model list to pre-populate the selector
   try {
     const data = await fetchModels();
     populateModelSelector(data.models);
   } catch { /* non-fatal */ }
 
-  try {
-    const { photos, semantic } = await loadPhotos();
-    allPhotos = photos;
-    lastSemantic = semantic;
-    currentPage = 1;
-    renderView();
-  } catch (err) {
-    setStatus(`Could not load photos: ${err.message || err}`, true);
-    gridEl.hidden = true;
-    paginationEl.hidden = true;
-  }
+  renderView();
+  searchInput.focus();
 })();
