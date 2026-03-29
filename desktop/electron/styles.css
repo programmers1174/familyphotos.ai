@@ -210,6 +210,7 @@ body.has-results .hero-search-input {
 }
 
 .thumb {
+  position: relative;
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
@@ -217,6 +218,23 @@ body.has-results .hero-search-input {
   padding: 0;
   background: var(--surface);
   cursor: pointer;
+}
+
+.thumb-score {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 4px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  text-align: right;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.72));
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
 }
 
 .thumb:focus-visible {

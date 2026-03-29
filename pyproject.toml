@@ -29,8 +29,9 @@ dependencies = [
   # HEIC decode (desktop thumbnails + CLIP indexing); Electron cannot render raw HEIC
   "pillow>=10.4.0",
   "pillow-heif>=0.16.0",
-  # Stage 3 semantic search
+  # Stage 3 semantic search (sentencepiece required for SigLIP tokenizers)
   "transformers>=4.40",
+  "sentencepiece>=0.2.0",
   "faiss-cpu>=1.7.4",
   "accelerate>=0.26",
 ]

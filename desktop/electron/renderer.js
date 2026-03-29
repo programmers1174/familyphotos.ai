@@ -22,7 +22,7 @@ const pageInfo      = document.getElementById("page-info");
 /** Thumbnails per page (homepage grid). */
 const PAGE_SIZE = 48;
 
-/** @type {{ id: string, relativePath: string, url: string, thumbnailUrl: string }[]} */
+/** @type {{ id: string, relativePath: string, url: string, thumbnailUrl: string, score?: number | null }[]} */
 let allPhotos = [];
 
 /** 1-based current page */
@@ -33,6 +33,21 @@ let lastSemantic = false;
 
 /** Polling handle for the index modal */
 let _pollInterval = null;
+
+/** FAISS inner product on L2-normalized CLIP vectors (= cosine similarity), range about [-1, 1]. */
+function formatRawScore(score) {
+  return score.toFixed(3);
+}
+
+function similarityTooltip(score) {
+  return `Similarity score ${formatRawScore(score)} (cosine / inner product, higher is closer)`;
+}
+
+/** Badge text for thumbnail, or empty when not applicable. */
+function formatSimilarityLabel(photo, semantic) {
+  if (!semantic || typeof photo.score !== "number") return "";
+  return formatRawScore(photo.score);
+}
 
 // ── Status bar ────────────────────────────────────────────────────────────
 
@@ -104,7 +119,11 @@ function renderView() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "thumb";
-    btn.setAttribute("aria-label", `Open ${p.relativePath}`);
+    const scoreLabel = formatSimilarityLabel(p, lastSemantic);
+    btn.setAttribute(
+      "aria-label",
+      scoreLabel ? `Open ${p.relativePath}, similarity ${scoreLabel}` : `Open ${p.relativePath}`,
+    );
     const img = document.createElement("img");
     const thumb = p.thumbnailUrl || p.url;
     img.src = `${API_BASE}${thumb}`;
@@ -112,6 +131,15 @@ function renderView() {
     img.loading = "lazy";
     img.decoding = "async";
     btn.appendChild(img);
+    if (scoreLabel) {
+      const badge = document.createElement("span");
+      badge.className = "thumb-score";
+      badge.textContent = scoreLabel;
+      if (typeof p.score === "number") {
+        badge.title = similarityTooltip(p.score);
+      }
+      btn.appendChild(badge);
+    }
     btn.addEventListener("click", () => openLightbox(p));
     gridEl.appendChild(btn);
   }

@@ -141,6 +141,8 @@ class PhotoItem(BaseModel):
     relativePath: str
     url: str
     thumbnailUrl: str
+    # Cosine similarity in [-1, 1] when returned from semantic search (FAISS inner product).
+    score: float | None = None
 
 
 class PhotoListResponse(BaseModel):
@@ -236,7 +238,9 @@ def list_photos(
         for hit in hits:
             item = valid.get(hit["photo_id"])
             if item:
-                ordered.append(item)
+                ordered.append(
+                    item.model_copy(update={"score": float(hit["score"])})
+                )
         return PhotoListResponse(photos=ordered, semantic=True)
 
     # Default: return all photos
