@@ -7,6 +7,14 @@ const modelSelect   = document.getElementById("model-select");
 const btnIndex      = document.getElementById("btn-index");
 const statusEl      = document.getElementById("status");
 const gridEl        = document.getElementById("grid");
+const resultsPanel  = document.getElementById("results-panel");
+const resultsQuery  = document.getElementById("results-query");
+const resultsEyebrow = document.getElementById("results-eyebrow");
+const resultsBadge  = document.getElementById("results-badge");
+const resultsCount  = document.getElementById("results-count");
+const resultsEmpty  = document.getElementById("results-empty");
+const resultsEmptyTitle = document.getElementById("results-empty-title");
+const resultsEmptyHint = document.getElementById("results-empty-hint");
 const lightbox      = document.getElementById("lightbox");
 const lightboxImg   = document.getElementById("lightbox-img");
 const lightboxClose = document.getElementById("lightbox-close");
@@ -90,24 +98,40 @@ function renderView() {
   if (!q) {
     document.body.classList.remove("has-results");
     setStatus("");
-    gridEl.hidden = true;
+    resultsPanel.hidden = true;
+    resultsEmpty.hidden = true;
     paginationEl.hidden = true;
     return;
   }
 
   document.body.classList.add("has-results");
+  resultsPanel.hidden = false;
+  resultsPanel.classList.toggle("results-panel--semantic", lastSemantic);
+  resultsQuery.textContent = q;
+  resultsEyebrow.textContent = lastSemantic ? "Neural similarity" : "Library scan";
+  resultsBadge.textContent = lastSemantic ? "CLIP / vector space" : "All indexed photos";
+  resultsBadge.classList.toggle("results-badge--semantic", lastSemantic);
+  const n = allPhotos.length;
+  resultsCount.textContent =
+    n === 0 ? "0 matches" : `${n} match${n === 1 ? "" : "es"} · page view`;
 
   if (allPhotos.length === 0) {
-    const msg = lastSemantic
-      ? "No matching photos found."
-      : "No photos in the database. Add entries to desktop/photos_db.json.";
-    setStatus(msg);
+    setStatus("");
+    if (lastSemantic) {
+      resultsEmptyTitle.textContent = "No visual hits";
+      resultsEmptyHint.textContent = "Try another scene, object, color, or mood in your prompt.";
+    } else {
+      resultsEmptyTitle.textContent = "Library is empty";
+      resultsEmptyHint.textContent = "Add entries to desktop/photos_db.json and point photosRoot at your folder.";
+    }
+    resultsEmpty.hidden = false;
     gridEl.hidden = true;
     paginationEl.hidden = true;
     return;
   }
 
   setStatus("");
+  resultsEmpty.hidden = true;
   gridEl.hidden = false;
   paginationEl.hidden = false;
 
@@ -115,10 +139,11 @@ function renderView() {
   const end = Math.min(start + PAGE_SIZE, allPhotos.length);
   const slice = allPhotos.slice(start, end);
 
-  for (const p of slice) {
+  slice.forEach((p, i) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "thumb";
+    btn.className = "thumb thumb--reveal";
+    btn.style.setProperty("--reveal-i", String(Math.min(i, 40)));
     const scoreLabel = formatSimilarityLabel(p, lastSemantic);
     btn.setAttribute(
       "aria-label",
@@ -142,7 +167,7 @@ function renderView() {
     }
     btn.addEventListener("click", () => openLightbox(p));
     gridEl.appendChild(btn);
-  }
+  });
 
   const tp = totalPages();
   pageInfo.textContent = `Page ${currentPage} of ${tp} · ${start + 1}–${end} of ${allPhotos.length}`;
@@ -169,6 +194,8 @@ async function refreshPhotos() {
   } catch (err) {
     allPhotos = [];
     setStatus(String(err.message || err), true);
+    resultsPanel.hidden = true;
+    resultsEmpty.hidden = true;
     gridEl.hidden = true;
     paginationEl.hidden = true;
     gridEl.replaceChildren();
@@ -218,6 +245,14 @@ function populateModelSelector(models) {
 
 modelSelect.addEventListener("change", refreshPhotos);
 searchInput.addEventListener("input",  refreshPhotos);
+
+document.querySelector(".suggestion-row")?.addEventListener("click", (e) => {
+  const btn = e.target.closest(".suggest-pill");
+  if (!btn?.dataset.suggest) return;
+  searchInput.value = btn.dataset.suggest;
+  searchInput.focus();
+  refreshPhotos();
+});
 
 pagePrev.addEventListener("click", () => {
   if (currentPage <= 1) return;
@@ -353,6 +388,26 @@ indexModal.addEventListener("click", (e) => { if (e.target === indexModal) close
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────
 
+const PLACEHOLDER_ROTATION = [
+  "Try: golden hour on the porch, messy kitchen birthday…",
+  "Try: dog in snow, red balloons, someone laughing…",
+  "Try: beach sunset, cake candles, kids on a swing…",
+  "Try: wedding dance floor, hiking trail, neon city night…",
+];
+
+let _placeholderIndex = 0;
+let _placeholderTimer = null;
+
+function startPlaceholderRotation() {
+  if (_placeholderTimer != null) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  _placeholderTimer = window.setInterval(() => {
+    if (document.activeElement === searchInput || searchInput.value.trim()) return;
+    _placeholderIndex = (_placeholderIndex + 1) % PLACEHOLDER_ROTATION.length;
+    searchInput.placeholder = PLACEHOLDER_ROTATION[_placeholderIndex];
+  }, 5200);
+}
+
 (async () => {
   try {
     const data = await fetchModels();
@@ -361,4 +416,5 @@ indexModal.addEventListener("click", (e) => { if (e.target === indexModal) close
 
   renderView();
   searchInput.focus();
+  startPlaceholderRotation();
 })();

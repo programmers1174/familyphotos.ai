@@ -4,43 +4,121 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>familyphotos.ai</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div class="app-bg" aria-hidden="true">
+      <div class="app-bg-gradient"></div>
+      <div class="app-bg-grid"></div>
+      <div class="app-bg-orb app-bg-orb--a"></div>
+      <div class="app-bg-orb app-bg-orb--b"></div>
+    </div>
+
     <header class="top-bar">
-      <span class="logo">familyphotos.ai</span>
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div class="brand-text">
+          <span class="logo">familyphotos<span class="logo-dot">.ai</span></span>
+          <span class="brand-pill">
+            <span class="brand-pill-dot" aria-hidden="true"></span>
+            Local semantic vision
+          </span>
+        </div>
+      </div>
       <div class="top-bar-actions">
         <div class="model-wrap">
-          <span class="search-label">Model</span>
+          <span class="search-label">Embedding model</span>
           <select id="model-select" title="Select embedding model for semantic search">
             <option value="">— show all —</option>
           </select>
         </div>
         <button id="btn-index" type="button" class="btn-index" title="Manage semantic search index">
-          Index
+          <span class="btn-index-glow" aria-hidden="true"></span>
+          <span class="btn-index-label">Index &amp; models</span>
         </button>
       </div>
     </header>
 
-    <section class="hero" aria-label="Search photos">
+    <section class="hero" aria-label="Semantic photo search">
       <div class="hero-content">
-        <p class="hero-tagline">Search your library</p>
-        <label class="hero-search-label">
-          <span class="visually-hidden">Search photos</span>
-          <input
-            id="search"
-            class="hero-search-input"
-            type="search"
-            placeholder="e.g. kids playing in snow, birthday cake, beach…"
-            autocomplete="off"
-          />
-        </label>
+        <p class="hero-eyebrow">CLIP · SigLIP · cosine match</p>
+        <h1 class="hero-title">Ask for a <span class="hero-title-accent">moment</span>, not a filename.</h1>
+        <p class="hero-sub">
+          Natural-language search runs on your GPU. Type a scene, object, mood, or color—results rank by visual similarity.
+        </p>
+
+        <div class="prompt-panel">
+          <div class="prompt-panel-ring" aria-hidden="true"></div>
+          <label class="prompt-shell">
+            <span class="visually-hidden">Semantic search query</span>
+            <span class="prompt-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M12 2L14.09 8.26L21 9.27L16 14.14L17.18 21.02L12 17.77L6.82 21.02L8 14.14L3 9.27L9.91 8.26L12 2Z"
+                  stroke="currentColor"
+                  stroke-width="1.35"
+                  stroke-linejoin="round"
+                  opacity="0.9"
+                />
+              </svg>
+            </span>
+            <input
+              id="search"
+              class="hero-search-input"
+              type="search"
+              placeholder="e.g. golden hour on the porch, messy kitchen birthday, dog in snow…"
+              autocomplete="off"
+              spellcheck="true"
+            />
+            <span class="prompt-chips" aria-hidden="true">
+              <span class="prompt-chip">vision</span>
+              <span class="prompt-chip prompt-chip--dim">embed</span>
+            </span>
+          </label>
+          <p class="prompt-hint">
+            Results update as you type · <kbd class="kbd-mini">Esc</kbd> closes the viewer
+          </p>
+          <div class="suggestion-row" role="group" aria-label="Example searches">
+            <button type="button" class="suggest-pill" data-suggest="kids playing outside in summer">Summer play</button>
+            <button type="button" class="suggest-pill" data-suggest="birthday cake candles">Birthday</button>
+            <button type="button" class="suggest-pill" data-suggest="beach sunset ocean">Beach sunset</button>
+            <button type="button" class="suggest-pill" data-suggest="family group photo indoors">Family group</button>
+            <button type="button" class="suggest-pill" data-suggest="snow winter outside">Winter snow</button>
+          </div>
+        </div>
       </div>
     </section>
 
     <main class="main">
       <p id="status" class="status" aria-live="polite" hidden></p>
-      <div id="grid" class="grid" hidden></div>
+
+      <section id="results-panel" class="results-panel" hidden aria-label="Search results">
+        <header class="results-head">
+          <div class="results-head-text">
+            <span class="results-eyebrow" id="results-eyebrow">Vision matches</span>
+            <p class="results-query" id="results-query"></p>
+          </div>
+          <div class="results-stats">
+            <span id="results-badge" class="results-badge"></span>
+            <span id="results-count" class="results-count"></span>
+          </div>
+        </header>
+        <div class="grid-stage">
+          <div id="results-empty" class="results-empty" hidden aria-live="polite">
+            <div class="results-empty-visual" aria-hidden="true"></div>
+            <p id="results-empty-title" class="results-empty-title">No visual hits</p>
+            <p id="results-empty-hint" class="results-empty-hint">Try a different scene, object, or color wording.</p>
+          </div>
+          <div id="grid" class="grid"></div>
+        </div>
+      </section>
+
       <nav id="pagination" class="pagination" aria-label="Photo pages" hidden>
         <button type="button" id="page-prev" class="page-btn">Previous</button>
         <span id="page-info" class="page-info"></span>
