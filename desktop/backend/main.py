@@ -98,10 +98,11 @@ def _thumb_jpeg_path(photo_id: str) -> Path:
 
 def _ensure_thumbnail_jpeg(source: Path, dest: Path) -> None:
     """Resize to fit within THUMB_MAX_EDGE and write JPEG. Atomic replace."""
-    from PIL import Image
+    from PIL import Image, ImageOps
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     with Image.open(source) as im:
+        im = ImageOps.exif_transpose(im)
         rgb = im.convert("RGB")
         rgb.thumbnail((_THUMB_MAX_EDGE, _THUMB_MAX_EDGE), Image.Resampling.LANCZOS)
         tmp = dest.with_suffix(".jpg.tmp")
@@ -111,10 +112,11 @@ def _ensure_thumbnail_jpeg(source: Path, dest: Path) -> None:
 
 def _heic_as_jpeg_response(path: Path) -> Response:
     """Chromium/Electron cannot display HEIC in <img>; serve JPEG bytes instead."""
-    from PIL import Image
+    from PIL import Image, ImageOps
 
     buf = BytesIO()
     with Image.open(path) as im:
+        im = ImageOps.exif_transpose(im)
         im.convert("RGB").save(buf, format="JPEG", quality=92, optimize=True)
     return Response(content=buf.getvalue(), media_type="image/jpeg")
 

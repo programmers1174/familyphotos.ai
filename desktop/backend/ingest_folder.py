@@ -51,10 +51,11 @@ def _thumb_jpeg_path(repo_root: Path, photo_id: str) -> Path:
 
 
 def _ensure_thumbnail_jpeg(source: Path, dest: Path) -> None:
-    from PIL import Image
+    from PIL import Image, ImageOps
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     with Image.open(source) as im:
+        im = ImageOps.exif_transpose(im)
         rgb = im.convert("RGB")
         rgb.thumbnail((_THUMB_MAX_EDGE, _THUMB_MAX_EDGE), Image.Resampling.LANCZOS)
         tmp = dest.with_suffix(".jpg.tmp")
