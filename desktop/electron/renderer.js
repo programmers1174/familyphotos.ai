@@ -258,7 +258,16 @@ function populateModelSelector(models) {
 }
 
 modelSelect.addEventListener("change", refreshPhotos);
-searchInput.addEventListener("input",  refreshPhotos);
+searchInput.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  // Only submit searches when user confirms with Enter.
+  e.preventDefault();
+  refreshPhotos();
+});
+// Fired when the built-in clear (×) is used on <input type="search"> in some browsers.
+searchInput.addEventListener("search", () => {
+  if (!searchInput.value.trim()) refreshPhotos();
+});
 
 document.querySelector(".suggestion-row")?.addEventListener("click", (e) => {
   const btn = e.target.closest(".suggest-pill");
