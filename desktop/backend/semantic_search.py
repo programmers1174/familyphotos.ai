@@ -213,6 +213,21 @@ class FaissStore:
 _loaded_models: dict[str, tuple] = {}
 _model_lock = threading.Lock()
 
+# Warmed at desktop API startup so the UI opens only after weights are ready.
+DEFAULT_PRELOAD_MODEL_ID = "clip-vit-base-patch32"
+
+
+def preload_embedding_model(model_id: str | None = None) -> str:
+    """Load one embedding model into GPU/CPU memory (and torch.compile on CUDA). Safe to call twice."""
+    mid = model_id or DEFAULT_PRELOAD_MODEL_ID
+    if mid not in MODELS:
+        raise ValueError(f"Unknown model_id for preload: {mid!r}")
+    info = MODELS[mid]
+    print(f"[semantic_search] preloading embedding model {mid!r} …", flush=True)
+    _load_model(info)
+    print(f"[semantic_search] model {mid!r} ready.", flush=True)
+    return mid
+
 
 def _load_model(model_info: dict[str, Any]) -> tuple:
     """Return (model, processor, device, model_type), loading once and caching."""

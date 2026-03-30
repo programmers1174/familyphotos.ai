@@ -7,9 +7,11 @@ Run from repo root: uv run python desktop/backend/main.py
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
+from contextlib import asynccontextmanager
 from io import BytesIO
 from pathlib import Path
 
@@ -121,7 +123,19 @@ def _heic_as_jpeg_response(path: Path) -> Response:
 # App
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="familyphotos.ai desktop API")
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """Load the default vision embedding model before accepting HTTP (desktop UI stays blocked until ready)."""
+    preload_id = os.environ.get("FAMILYPHOTOS_PRELOAD_MODEL", ss.DEFAULT_PRELOAD_MODEL_ID)
+    if preload_id not in ss.MODELS:
+        preload_id = next(iter(ss.MODELS))
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, ss.preload_embedding_model, preload_id)
+    yield
+
+
+app = FastAPI(title="familyphotos.ai desktop API", lifespan=_lifespan)
 
 app.add_middleware(
     CORSMiddleware,

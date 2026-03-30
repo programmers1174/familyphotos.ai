@@ -42,3 +42,6 @@ desktop/electron/node_modules/
 desktop/thumbnails/*
 !desktop/thumbnails/.gitkeep
 
+# Desktop backend search index (FAISS + id maps; regenerated locally)
+desktop/backend/indexes/
+

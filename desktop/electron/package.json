@@ -8,5 +8,8 @@
   },
   "devDependencies": {
     "electron": "^33.2.1"
+  },
+  "dependencies": {
+    "tree-kill": "^1.2.2"
   }
 }

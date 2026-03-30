@@ -18,10 +18,11 @@ const resultsEmptyHint = document.getElementById("results-empty-hint");
 const lightbox      = document.getElementById("lightbox");
 const lightboxImg   = document.getElementById("lightbox-img");
 const lightboxClose = document.getElementById("lightbox-close");
-const indexModal    = document.getElementById("index-modal");
-const modalClose    = document.getElementById("modal-close");
-const deviceLabel   = document.getElementById("device-label");
-const modelCards    = document.getElementById("model-cards");
+const indexModal       = document.getElementById("index-modal");
+const modalClose       = document.getElementById("modal-close");
+const modalModelFilter = document.getElementById("modal-model-filter");
+const deviceLabel      = document.getElementById("device-label");
+const modelCards       = document.getElementById("model-cards");
 const paginationEl  = document.getElementById("pagination");
 const pagePrev      = document.getElementById("page-prev");
 const pageNext      = document.getElementById("page-next");
@@ -41,6 +42,12 @@ let lastSemantic = false;
 
 /** Polling handle for the index modal */
 let _pollInterval = null;
+
+/** Last `/api/index/models` payload (for filter / sort without re-fetching). */
+let _lastIndexModelsData = null;
+
+/** @type {"recency" | "size" | "downloaded"} */
+let _indexSort = "recency";
 
 /** FAISS inner product on L2-normalized CLIP vectors (= cosine similarity), range about [-1, 1]. */
 function formatRawScore(score) {
@@ -230,6 +237,11 @@ window.addEventListener("keydown", (e) => {
 
 // ── Model selector ────────────────────────────────────────────────────────
 
+function formatDiskGb(sizeMb) {
+  if (sizeMb >= 1024) return `${(sizeMb / 1024).toFixed(2)} GB`;
+  return `${sizeMb} MB`;
+}
+
 function populateModelSelector(models) {
   // Remove existing model options (keep the "show all" placeholder)
   while (modelSelect.options.length > 1) modelSelect.remove(1);
@@ -238,7 +250,9 @@ function populateModelSelector(models) {
     if (m.indexed_count === 0) continue;  // Only show indexed models
     const opt = document.createElement("option");
     opt.value = m.id;
-    opt.textContent = `${m.name} (${m.indexed_count} photos)`;
+    const storage = formatDiskGb(m.size_mb);
+    opt.textContent = `${m.name} · ${storage} · ${m.indexed_count} photos`;
+    opt.title = `${m.name} — weights on disk about ${storage}; ${m.indexed_count} photos in this index`;
     modelSelect.appendChild(opt);
   }
 }
@@ -296,46 +310,101 @@ function stateDotClass(m) {
   return "idle";
 }
 
+/** Short spec chip from display name, e.g. ViT-B/32 → B/32 */
+function modelQuantSpec(name) {
+  const match = name.match(/ViT-([^,\s]+)/i);
+  return match ? match[1].toUpperCase() : "ViT";
+}
+
+function modelProviderLower(m) {
+  if (m.model_type === "siglip") return "google";
+  if (m.model_type === "clip") return "openai";
+  return m.id.split("-")[0] || "—";
+}
+
+const LM_VISION_ICON = `<svg class="lm-cap-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" fill="currentColor"/></svg>`;
+
 function renderModelCards(data) {
-  deviceLabel.textContent = `Running on: ${data.device}`;
+  _lastIndexModelsData = data;
+  const filterQ = (modalModelFilter && modalModelFilter.value.trim().toLowerCase()) || "";
+  let models = data.models.filter(
+    (m) =>
+      !filterQ ||
+      m.name.toLowerCase().includes(filterQ) ||
+      m.id.toLowerCase().includes(filterQ) ||
+      (m.description && m.description.toLowerCase().includes(filterQ)),
+  );
+
+  if (_indexSort === "size") {
+    models = [...models].sort((a, b) => b.size_mb - a.size_mb || a.name.localeCompare(b.name));
+  } else if (_indexSort === "downloaded") {
+    models = [...models].sort((a, b) => {
+      const ai = a.indexed_count > 0 ? 1 : 0;
+      const bi = b.indexed_count > 0 ? 1 : 0;
+      if (bi !== ai) return bi - ai;
+      return a.name.localeCompare(b.name);
+    });
+  } else {
+    models = [...models].sort((a, b) => {
+      if (b.indexed_count !== a.indexed_count) return b.indexed_count - a.indexed_count;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  deviceLabel.textContent = `Device: ${data.device}`;
   modelCards.replaceChildren();
 
-  for (const m of data.models) {
-    const card = document.createElement("div");
-    card.className = "model-card";
-    card.dataset.modelId = m.id;
+  for (const m of models) {
+    const row = document.createElement("div");
+    const active = m.state === "indexing";
+    const err = m.state === "error";
+    row.className = `model-row lm-model-row${active ? " model-row--active" : ""}${err ? " model-row--error" : ""}`;
+    row.dataset.modelId = m.id;
 
     const pct = m.total > 0 ? Math.round((m.done / m.total) * 100) : 0;
     const progressHtml = m.state === "indexing"
-      ? `<div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>`
+      ? `<div class="lm-progress-track lm-progress-track--inline"><div class="lm-progress-fill" style="width:${pct}%"></div></div>`
       : "";
 
-    const btnLabel  = m.state === "indexing"  ? "Indexing…"
-                    : m.indexed_count > 0     ? "Re-index"
-                    : "Start Indexing";
+    const btnLabel =
+      m.state === "indexing" ? "Indexing…" : m.indexed_count > 0 ? "Re-index" : "Index";
     const btnDisabled = m.state === "indexing" ? "disabled" : "";
 
-    card.innerHTML = `
-      <div class="model-card-header">
-        <span class="model-card-name">${m.name}</span>
-        <span class="badge badge-${m.model_type}">${m.model_type.toUpperCase()}</span>
-      </div>
-      <p class="model-card-desc">${m.description}</p>
-      <p class="model-card-meta">${m.embedding_dim}-dim · ~${m.size_mb} MB download</p>
-      <div class="model-card-footer">
-        <span class="model-status">
-          <span class="status-dot ${stateDotClass(m)}"></span>${stateLabel(m)}
+    const quant = modelQuantSpec(m.name);
+    const provider = modelProviderLower(m);
+    const familyClass =
+      m.model_type === "siglip" ? "lm-ml-family lm-ml-family--siglip" : "lm-ml-family lm-ml-family--clip";
+    const familyLabel = m.model_type === "clip" ? "clip" : "siglip";
+
+    row.innerHTML = `
+      <div class="lm-model-line" role="group" aria-label="${m.name}">
+        <span class="lm-ml-name" title="${m.id}">${m.name}</span>
+        <span class="lm-ml-chip lm-ml-chip--quant" title="Architecture">${quant}</span>
+        <span class="lm-ml-cap lm-ml-cap--vision" title="Vision embedding">${LM_VISION_ICON}</span>
+        <span class="lm-ml-provider">${provider}</span>
+        <span class="lm-ml-params">${m.embedding_dim}D</span>
+        <span class="${familyClass}">${familyLabel}</span>
+        <span class="lm-ml-format">HF</span>
+        <span class="lm-ml-size">${formatDiskGb(m.size_mb)}</span>
+        <span class="lm-ml-tail">
+          <span class="lm-ml-status" title="${stateLabel(m)}">
+            <span class="lm-status-dot ${stateDotClass(m)}" aria-hidden="true"></span>
+          </span>
+          <button type="button" class="btn-lm-action btn-lm-action--row" data-model="${m.id}" ${btnDisabled}>${btnLabel}</button>
+          <span class="lm-ml-chevron" aria-hidden="true">›</span>
         </span>
-        <button class="btn-start" data-model="${m.id}" ${btnDisabled}>${btnLabel}</button>
       </div>
+      <p class="lm-model-desc">${m.description}</p>
       ${progressHtml}
     `;
-    modelCards.appendChild(card);
+    modelCards.appendChild(row);
   }
 
-  // Wire up start buttons
-  modelCards.querySelectorAll(".btn-start").forEach((btn) => {
-    btn.addEventListener("click", () => startIndexing(btn.dataset.model));
+  modelCards.querySelectorAll(".btn-lm-action").forEach((btn) => {
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      startIndexing(btn.dataset.model);
+    });
   });
 }
 
@@ -369,8 +438,13 @@ async function refreshModalCards() {
 function openIndexModal() {
   indexModal.hidden = false;
   document.body.style.overflow = "hidden";
+  if (modalModelFilter) modalModelFilter.value = "";
+  _indexSort = "recency";
+  indexModal.querySelectorAll(".lm-sort-btn").forEach((b) => {
+    b.classList.toggle("lm-sort-btn--active", b.dataset.sort === "recency");
+  });
   refreshModalCards();
-  // Poll while modal is open
+  queueMicrotask(() => modalModelFilter?.focus());
   _pollInterval = setInterval(refreshModalCards, 1500);
 }
 
@@ -385,6 +459,20 @@ function closeIndexModal() {
 btnIndex.addEventListener("click", openIndexModal);
 modalClose.addEventListener("click", closeIndexModal);
 indexModal.addEventListener("click", (e) => { if (e.target === indexModal) closeIndexModal(); });
+
+indexModal.addEventListener("click", (e) => {
+  const sortBtn = e.target.closest(".lm-sort-btn");
+  if (!sortBtn || !sortBtn.dataset.sort) return;
+  _indexSort = /** @type {"recency" | "size" | "downloaded"} */ (sortBtn.dataset.sort);
+  indexModal.querySelectorAll(".lm-sort-btn").forEach((b) => {
+    b.classList.toggle("lm-sort-btn--active", b === sortBtn);
+  });
+  if (_lastIndexModelsData) renderModelCards(_lastIndexModelsData);
+});
+
+modalModelFilter?.addEventListener("input", () => {
+  if (_lastIndexModelsData) renderModelCards(_lastIndexModelsData);
+});
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────
 

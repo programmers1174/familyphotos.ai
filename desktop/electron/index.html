@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
@@ -132,22 +132,50 @@
       <p class="lightbox-hint">Press <kbd>Esc</kbd> to close</p>
     </div>
 
-    <div id="index-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Semantic Search Index">
-      <div class="modal-panel">
-        <div class="modal-header">
-          <h2 class="modal-title">Semantic Search Index</h2>
-          <button type="button" id="modal-close" class="lightbox-close" aria-label="Close">×</button>
+    <div
+      id="index-modal"
+      class="modal-overlay modal-overlay--lm"
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-label="Semantic Search Index"
+    >
+        <div class="modal-panel modal-panel--lm modal-panel--lm-wide">
+        <div class="lm-titlebar">
+          <span class="lm-titlebar-icon" aria-hidden="true">◼</span>
+          <span class="lm-titlebar-text">familyphotos.ai — Index models</span>
         </div>
+        <div class="lm-modal-body">
+          <div class="lm-filter-row">
+            <input
+              type="search"
+              id="modal-model-filter"
+              class="lm-filter-input"
+              placeholder="Type to filter models..."
+              autocomplete="off"
+              aria-label="Filter models"
+            />
+            <button type="button" id="modal-close" class="lm-filter-close" aria-label="Close">×</button>
+          </div>
 
-        <p id="device-label" class="modal-device"></p>
+          <div class="lm-models-toolbar">
+            <span class="lm-models-toolbar-label">Your Models</span>
+            <div class="lm-sort-toggle" role="group" aria-label="Sort models">
+              <button type="button" class="lm-sort-btn lm-sort-btn--active" data-sort="recency">
+                Recency <span class="lm-sort-arrow" aria-hidden="true">↓</span>
+              </button>
+              <button type="button" class="lm-sort-btn" data-sort="size">Size</button>
+              <button type="button" class="lm-sort-btn" data-sort="downloaded">Downloaded</button>
+            </div>
+          </div>
 
-        <p class="modal-hint">
-          Index your photos with an AI model to enable smart search queries like
-          <em>"birthday cake"</em> or <em>"kids at the beach"</em>.
-          The model runs locally on your GPU. First run will download the model weights.
-        </p>
+          <p id="device-label" class="lm-device"></p>
+          <p class="lm-modal-hint">
+            Index photos for natural-language search. Models run on your GPU; first run downloads weights.
+          </p>
 
-        <div id="model-cards" class="model-cards"></div>
+          <div id="model-cards" class="model-cards model-cards--lm"></div>
+        </div>
       </div>
     </div>
 

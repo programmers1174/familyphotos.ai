@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loading — familyphotos.ai</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --lm-blue: #3b5bdb;
+        --lm-blue-hover: #364fc7;
+        --lm-bg: #e9ecef;
+        --lm-panel: #ffffff;
+        --lm-border: #dee2e6;
+        --lm-text: #212529;
+        --lm-muted: #868e96;
+        --lm-pill-bg: #e9ecef;
+        --lm-chip-border: #ced4da;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body.lm-loading {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: var(--lm-text);
+        background: var(--lm-bg);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .lm-loading-titlebar {
+        flex-shrink: 0;
+        height: 40px;
+        background: var(--lm-blue);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        -webkit-app-region: drag;
+        user-select: none;
+      }
+
+      .lm-loading-titlebar-ico {
+        font-size: 11px;
+        opacity: 0.95;
+        line-height: 1;
+      }
+
+      .lm-loading-main {
+        flex: 1;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 28px 20px 32px;
+      }
+
+      .lm-loading-card {
+        width: 100%;
+        max-width: 520px;
+        background: var(--lm-panel);
+        border-radius: 12px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+        padding: 20px 20px 22px;
+      }
+
+      .lm-loading-pill {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        min-height: 44px;
+        padding: 10px 14px;
+        background: var(--lm-pill-bg);
+        border-radius: 999px;
+        border: 1px solid var(--lm-border);
+        margin-bottom: 18px;
+      }
+
+      .lm-loading-pill-ico {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: var(--lm-blue);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        flex-shrink: 0;
+      }
+
+      .lm-loading-pill-text {
+        flex: 1;
+        min-width: 0;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--lm-text);
+      }
+
+      .lm-loading-pill-sub {
+        width: 100%;
+        flex-basis: 100%;
+        padding-left: 38px;
+        margin: 0;
+        font-size: 12px;
+        color: var(--lm-muted);
+        line-height: 1.45;
+      }
+
+      .lm-loading-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .lm-chip {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        padding: 4px 9px;
+        border-radius: 6px;
+        border: 1px solid var(--lm-chip-border);
+        color: var(--lm-muted);
+        background: #fff;
+        text-transform: uppercase;
+      }
+
+      .lm-chip--accent {
+        border-color: rgba(59, 91, 219, 0.45);
+        color: var(--lm-blue);
+        background: rgba(59, 91, 219, 0.08);
+      }
+
+      .lm-chip--pulse {
+        animation: lm-pulse 1.2s ease-in-out infinite;
+      }
+
+      @keyframes lm-pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.55;
+        }
+      }
+
+      .lm-loading-heading {
+        margin: 0 0 8px;
+        font-size: 15px;
+        font-weight: 600;
+      }
+
+      .lm-loading-body {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.55;
+        color: var(--lm-muted);
+      }
+
+      .lm-progress-track {
+        margin-top: 18px;
+        height: 10px;
+        background: var(--lm-pill-bg);
+        border-radius: 999px;
+        overflow: hidden;
+        border: 1px solid var(--lm-border);
+      }
+
+      .lm-progress-indeterminate {
+        height: 100%;
+        width: 40%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--lm-blue), #748ffc);
+        animation: lm-slide 1.3s ease-in-out infinite;
+      }
+
+      @keyframes lm-slide {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(350%);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .lm-chip--pulse,
+        .lm-progress-indeterminate {
+          animation: none;
+        }
+        .lm-progress-indeterminate {
+          width: 100%;
+          opacity: 0.6;
+        }
+      }
+    </style>
+  </head>
+  <body class="lm-loading">
+    <header class="lm-loading-titlebar">
+      <span class="lm-loading-titlebar-ico" aria-hidden="true">◼</span>
+      <span>familyphotos.ai</span>
+    </header>
+    <main class="lm-loading-main">
+      <div class="lm-loading-card" role="status" aria-live="polite" aria-busy="true">
+        <div class="lm-loading-pill">
+          <span class="lm-loading-pill-ico" aria-hidden="true">◇</span>
+          <span class="lm-loading-pill-text">Loading vision model…</span>
+          <p class="lm-loading-pill-sub">
+            Starting the local engine. Keep this window open — the first launch may download several hundred MB from Hugging Face.
+          </p>
+        </div>
+
+        <div class="lm-loading-chips" aria-hidden="true">
+          <span class="lm-chip">GPU</span>
+          <span class="lm-chip">WEIGHTS</span>
+          <span class="lm-chip">ViT</span>
+          <span class="lm-chip lm-chip--accent lm-chip--pulse">LOADING</span>
+        </div>
+
+        <h1 class="lm-loading-heading">Preparing semantic search</h1>
+        <p class="lm-loading-body">
+          The embedding model is being loaded into memory. Search and indexing stay disabled until this step finishes.
+        </p>
+
+        <div class="lm-progress-track" aria-hidden="true">
+          <div class="lm-progress-indeterminate"></div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
